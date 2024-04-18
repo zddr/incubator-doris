@@ -154,7 +154,10 @@ public class MTMVPartitionUtil {
         long start = System.currentTimeMillis();
         RelatedPartitionDescResult result = new RelatedPartitionDescResult();
         for (MTMVRelatedPartitionDescGeneratorService service : partitionDescGenerators) {
+            long start1 = System.currentTimeMillis();
             service.apply(mvPartitionInfo, mvProperties, result);
+            LOG.warn("{} use [{}] mills", service.getClass().getName(),
+                    System.currentTimeMillis() - start1);
         }
         LOG.warn("generateRelatedPartitionDescs use [{}] mills, mvPartitionInfo is [{}]",
                 System.currentTimeMillis() - start, mvPartitionInfo);
