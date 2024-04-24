@@ -120,11 +120,6 @@ public class RangePartitionItem extends PartitionItem {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hashCode(partitionKeyRange);
-    }
-
-    @Override
     public String toString() {
         return partitionKeyRange.toString();
     }
