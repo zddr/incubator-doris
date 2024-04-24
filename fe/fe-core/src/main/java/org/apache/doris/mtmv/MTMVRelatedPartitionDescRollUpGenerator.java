@@ -19,6 +19,7 @@ package org.apache.doris.mtmv;
 
 import org.apache.doris.analysis.PartitionKeyDesc;
 import org.apache.doris.analysis.PartitionValue;
+import org.apache.doris.catalog.PartitionItem;
 import org.apache.doris.catalog.PartitionType;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.mtmv.MTMVPartitionInfo.MTMVPartitionType;
@@ -52,6 +53,12 @@ public class MTMVRelatedPartitionDescRollUpGenerator implements MTMVRelatedParti
         } else {
             throw new AnalysisException("only RANGE/LIST partition support roll up");
         }
+    }
+
+    @Override
+    public Map<PartitionItem, Set<Long>> applyNew(MTMVPartitionInfo mvPartitionInfo, Map<String, String> mvProperties,
+            Map<PartitionItem, Set<Long>> lastResult) throws AnalysisException {
+        return lastResult;
     }
 
     /**

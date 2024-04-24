@@ -27,6 +27,7 @@ import org.apache.doris.catalog.Database;
 import org.apache.doris.catalog.Env;
 import org.apache.doris.catalog.MTMV;
 import org.apache.doris.catalog.Partition;
+import org.apache.doris.catalog.PartitionItem;
 import org.apache.doris.catalog.TableIf;
 import org.apache.doris.catalog.Type;
 import org.apache.doris.common.AnalysisException;
@@ -166,6 +167,25 @@ public class MTMVPartitionUtil {
                     System.currentTimeMillis() - start, mvPartitionInfo);
         }
         return result.getDescs();
+    }
+
+    public static Map<PartitionItem, Set<Long>> generateRelatedPartitionItems(MTMVPartitionInfo mvPartitionInfo,
+            Map<String, String> mvProperties) throws AnalysisException {
+        long start = System.currentTimeMillis();
+        Map<PartitionItem, Set<Long>> result = new HashMap<>();
+        for (MTMVRelatedPartitionDescGeneratorService service : partitionDescGenerators) {
+            long start1 = System.currentTimeMillis();
+            result = service.applyNew(mvPartitionInfo, mvProperties, result);
+            LOG.warn("{} use [{}] mills", service.getClass().getName(),
+                    System.currentTimeMillis() - start1);
+        }
+        LOG.warn("generateRelatedPartitionDescs use [{}] mills, mvPartitionInfo is [{}]",
+                System.currentTimeMillis() - start, mvPartitionInfo);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("generateRelatedPartitionDescs use [{}] mills, mvPartitionInfo is [{}]",
+                    System.currentTimeMillis() - start, mvPartitionInfo);
+        }
+        return result;
     }
 
     public static List<String> getPartitionNamesByIds(MTMV mtmv, Collection<Long> ids) throws AnalysisException {

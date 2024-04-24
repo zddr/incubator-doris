@@ -64,4 +64,10 @@ public class MTMVRelatedPartitionDescOnePartitionColGenerator implements MTMVRel
         }
         lastResult.setDescs(res);
     }
+
+    @Override
+    public Map<PartitionItem, Set<Long>> applyNew(MTMVPartitionInfo mvPartitionInfo, Map<String, String> mvProperties,
+            Map<PartitionItem, Set<Long>> lastResult) throws AnalysisException {
+        return lastResult;
+    }
 }

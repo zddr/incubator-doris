@@ -17,9 +17,15 @@
 
 package org.apache.doris.mtmv;
 
+import org.apache.doris.catalog.PartitionItem;
 import org.apache.doris.common.AnalysisException;
 
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * get all related partition descs
@@ -30,5 +36,16 @@ public class MTMVRelatedPartitionDescInitGenerator implements MTMVRelatedPartiti
     public void apply(MTMVPartitionInfo mvPartitionInfo, Map<String, String> mvProperties,
             RelatedPartitionDescResult lastResult) throws AnalysisException {
         lastResult.setItems(mvPartitionInfo.getRelatedTable().getAndCopyPartitionItems());
+    }
+
+    @Override
+    public Map<PartitionItem, Set<Long>> applyNew(MTMVPartitionInfo mvPartitionInfo, Map<String, String> mvProperties,
+            Map<PartitionItem, Set<Long>> lastResult) throws AnalysisException {
+        Map<Long, PartitionItem> items = mvPartitionInfo.getRelatedTable().getAndCopyPartitionItems();
+        Map<PartitionItem, Set<Long>> res = Maps.newHashMap();
+        for (Entry<Long, PartitionItem> entry : items.entrySet()) {
+            res.put(entry.getValue(), Sets.newHashSet(entry.getKey()));
+        }
+        return res;
     }
 }

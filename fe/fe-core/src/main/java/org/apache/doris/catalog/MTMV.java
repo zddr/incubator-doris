@@ -321,7 +321,7 @@ public class MTMV extends OlapTable {
      * @return mvPartitionId ==> relationPartitionIds
      * @throws AnalysisException
      */
-    public Map<Long, Set<Long>> calculatePartitionMappings() throws AnalysisException {
+    public Map<Long, Set<Long>> calculatePartitionMappings1() throws AnalysisException {
         if (mvPartitionInfo.getPartitionType() == MTMVPartitionType.SELF_MANAGE) {
             return Maps.newHashMap();
         }
@@ -333,6 +333,28 @@ public class MTMV extends OlapTable {
         for (Entry<Long, PartitionItem> entry : mvPartitionItems.entrySet()) {
             res.put(entry.getKey(),
                     relatedPartitionDescs.getOrDefault(entry.getValue().toPartitionKeyDesc(), Sets.newHashSet()));
+        }
+        LOG.warn("calculatePartitionMappings use [{}] mills, mvName is [{}]",
+                System.currentTimeMillis() - start, name);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("calculatePartitionMappings use [{}] mills, mvName is [{}]",
+                    System.currentTimeMillis() - start, name);
+        }
+        return res;
+    }
+
+    public Map<Long, Set<Long>> calculatePartitionMappings() throws AnalysisException {
+        if (mvPartitionInfo.getPartitionType() == MTMVPartitionType.SELF_MANAGE) {
+            return Maps.newHashMap();
+        }
+        long start = System.currentTimeMillis();
+        Map<Long, Set<Long>> res = Maps.newHashMap();
+        Map<PartitionItem, Set<Long>> relatedPartitionDescs = MTMVPartitionUtil
+                .generateRelatedPartitionItems(mvPartitionInfo, mvProperties);
+        Map<Long, PartitionItem> mvPartitionItems = getAndCopyPartitionItems();
+        for (Entry<Long, PartitionItem> entry : mvPartitionItems.entrySet()) {
+            res.put(entry.getKey(),
+                    relatedPartitionDescs.getOrDefault(entry.getValue(), Sets.newHashSet()));
         }
         LOG.warn("calculatePartitionMappings use [{}] mills, mvName is [{}]",
                 System.currentTimeMillis() - start, name);

@@ -34,6 +34,7 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Only focus on partial partitions of related tables
@@ -58,6 +59,12 @@ public class MTMVRelatedPartitionDescSyncLimitGenerator implements MTMVRelatedPa
             }
         }
         lastResult.setItems(res);
+    }
+
+    @Override
+    public Map<PartitionItem, Set<Long>> applyNew(MTMVPartitionInfo mvPartitionInfo, Map<String, String> mvProperties,
+            Map<PartitionItem, Set<Long>> lastResult) throws AnalysisException {
+        return lastResult;
     }
 
     /**
