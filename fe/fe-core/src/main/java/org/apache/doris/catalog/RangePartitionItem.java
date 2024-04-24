@@ -22,6 +22,7 @@ import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.util.RangeUtils;
 import org.apache.doris.mtmv.MTMVUtil;
 
+import com.google.common.base.Objects;
 import com.google.common.collect.Range;
 
 import java.io.DataOutput;
@@ -107,11 +108,20 @@ public class RangePartitionItem extends PartitionItem {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof RangePartitionItem) {
-            return partitionKeyRange.equals(((RangePartitionItem) obj).getItems());
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
         }
-        return false;
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        RangePartitionItem that = (RangePartitionItem) o;
+        return Objects.equal(partitionKeyRange, that.partitionKeyRange);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(partitionKeyRange);
     }
 
     @Override
