@@ -321,7 +321,7 @@ public class MTMV extends OlapTable {
      * @return mvPartitionId ==> relationPartitionIds
      * @throws AnalysisException
      */
-    public Map<Long, Set<Long>> calculatePartitionMappings1() throws AnalysisException {
+    public Map<Long, Set<Long>> calculatePartitionMappings() throws AnalysisException {
         if (mvPartitionInfo.getPartitionType() == MTMVPartitionType.SELF_MANAGE) {
             return Maps.newHashMap();
         }
@@ -343,7 +343,7 @@ public class MTMV extends OlapTable {
         return res;
     }
 
-    public Map<Long, Set<Long>> calculatePartitionMappings() throws AnalysisException {
+    public Map<Long, Set<Long>> calculatePartitionMappings1() throws AnalysisException {
         if (mvPartitionInfo.getPartitionType() == MTMVPartitionType.SELF_MANAGE) {
             return Maps.newHashMap();
         }
