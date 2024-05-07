@@ -957,7 +957,7 @@ public class HMSExternalTable extends ExternalTable implements MTMVRelatedTableI
 
     @Override
     public boolean needAutoRefresh() {
-        return false;
+        return true;
     }
 
     @Override
