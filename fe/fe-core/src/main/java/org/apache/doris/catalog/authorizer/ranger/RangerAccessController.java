@@ -117,17 +117,16 @@ public abstract class RangerAccessController implements CatalogAccessController 
     @Override
     public Optional<DataMaskPolicy> evalDataMaskPolicy(UserIdentity currentUser, String ctl, String db, String tbl,
             String col) {
+        long start = System.currentTimeMillis();
         RangerAccessResourceImpl resource = createResource(ctl, db, tbl, col);
         RangerAccessRequestImpl request = createRequest(currentUser);
         request.setResource(resource);
-
+        LOG.warn("evalDataMaskPolicy create request: {}, duration: {}", request, System.currentTimeMillis() - start);
         if (LOG.isDebugEnabled()) {
             LOG.debug("ranger request: {}", request);
         }
-        long start = System.currentTimeMillis();
         RangerAccessResult policy = getPlugin().evalDataMaskPolicies(request, getAccessResultProcessor());
-        System.out.println("evalDataMaskPolicy use: " + (System.currentTimeMillis() - start) + "request:" + request);
-        LOG.warn("evalDataMaskPolicy use: " + (System.currentTimeMillis() - start) + "request:" + request);
+        LOG.warn("evalDataMaskPolicy get response: {}, duration: {}", request, System.currentTimeMillis() - start);
         if (LOG.isDebugEnabled()) {
             LOG.debug("ranger response: {}", policy);
         }
@@ -156,6 +155,7 @@ public abstract class RangerAccessController implements CatalogAccessController 
                 if (StringUtils.isEmpty(transformer)) {
                     return Optional.empty();
                 }
+                LOG.warn("evalDataMaskPolicy resolve: {}, duration: {}", request, System.currentTimeMillis() - start);
                 return Optional.of(new RangerDataMaskPolicy(currentUser, ctl, db, tbl, col, policy.getPolicyId(),
                         policy.getPolicyVersion(), maskType, transformer.replace("{col}", col)));
         }
