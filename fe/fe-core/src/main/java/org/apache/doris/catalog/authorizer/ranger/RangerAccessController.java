@@ -127,6 +127,7 @@ public abstract class RangerAccessController implements CatalogAccessController 
         long start = System.currentTimeMillis();
         RangerAccessResult policy = getPlugin().evalDataMaskPolicies(request, getAccessResultProcessor());
         System.out.println("evalDataMaskPolicy use: " + (System.currentTimeMillis() - start) + "request:" + request);
+        LOG.warn("evalDataMaskPolicy use: " + (System.currentTimeMillis() - start) + "request:" + request);
         if (LOG.isDebugEnabled()) {
             LOG.debug("ranger response: {}", policy);
         }
