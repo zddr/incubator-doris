@@ -105,8 +105,9 @@ public class RangerDorisAccessController extends RangerAccessController {
         if (LOG.isDebugEnabled()) {
             LOG.debug("ranger request: {}", request);
         }
-
+        long start = System.currentTimeMillis();
         RangerAccessResult result = dorisPlugin.isAccessAllowed(request);
+        System.out.println("checkPrivilege use: " + (System.currentTimeMillis() - start) + "request:" + request);
         return checkRequestResult(request, result, accessType.name());
     }
 
