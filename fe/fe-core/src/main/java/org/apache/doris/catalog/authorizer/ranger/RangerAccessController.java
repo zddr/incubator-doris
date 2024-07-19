@@ -117,7 +117,7 @@ public abstract class RangerAccessController implements CatalogAccessController 
     @Override
     public Optional<DataMaskPolicy> evalDataMaskPolicy(UserIdentity currentUser, String ctl, String db, String tbl,
             String col) {
-        RangerAccessResourceImpl resource = createResource(ctl, db, tbl, col);
+        RangerAccessResourceImpl resource = createResource(ctl, db, tbl);
         RangerAccessRequestImpl request = createRequest(currentUser);
         request.setResource(resource);
 
