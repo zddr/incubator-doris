@@ -31,7 +31,6 @@ import com.google.common.collect.Maps;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.ranger.plugin.policyengine.RangerAccessRequest;
-import org.apache.ranger.plugin.policyengine.RangerAccessRequest.ResourceMatchingScope;
 import org.apache.ranger.plugin.policyengine.RangerAccessRequestImpl;
 import org.apache.ranger.plugin.policyengine.RangerAccessResult;
 import org.apache.ranger.plugin.policyengine.RangerAccessResultProcessor;
@@ -85,7 +84,7 @@ public class RangerHiveAccessController extends RangerAccessController {
         request.setClusterType(CLIENT_TYPE_DORIS);
         request.setClientType(CLIENT_TYPE_DORIS);
         request.setAccessTime(new Date());
-        request.setResourceMatchingScope(ResourceMatchingScope.SELF_OR_DESCENDANTS);
+        // request.setResourceMatchingScope(ResourceMatchingScope.SELF_OR_DESCENDANTS);
 
         return request;
     }
