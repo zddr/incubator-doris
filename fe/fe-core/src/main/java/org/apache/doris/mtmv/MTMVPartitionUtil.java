@@ -448,7 +448,7 @@ public class MTMVPartitionUtil {
         }
         MTMVSnapshotIf baseTableCurrentSnapshot = baseTable.getTableSnapshot();
         return mtmv.getRefreshSnapshot()
-                .equalsWithBaseTable(mtmvPartitionName, baseTable.getId(), baseTableCurrentSnapshot);
+                .equalsWithBaseTable(mtmvPartitionName, new BaseTableInfo(baseTable), baseTableCurrentSnapshot);
     }
 
     /**
@@ -496,7 +496,9 @@ public class MTMVPartitionUtil {
             if (!(table instanceof MTMVRelatedTableIf)) {
                 continue;
             }
-            refreshPartitionSnapshot.getTables().put(table.getId(), ((MTMVRelatedTableIf) table).getTableSnapshot());
+
+            refreshPartitionSnapshot.addTableSnapshot(baseTableInfo,
+                    ((MTMVRelatedTableIf) table).getTableSnapshot());
         }
         return refreshPartitionSnapshot;
     }
