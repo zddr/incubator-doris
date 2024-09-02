@@ -2889,6 +2889,12 @@ public class OlapTable extends Table implements MTMVRelatedTableIf, GsonPostProc
     }
 
     public long getVisibleVersion() {
+        try {
+            LOG.info("===========================================getVisibleVersion Thread.sleep");
+            Thread.sleep(5000L);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
         if (Config.isNotCloudMode()) {
             return tableAttributes.getVisibleVersion();
         }

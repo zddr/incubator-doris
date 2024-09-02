@@ -845,12 +845,12 @@ public abstract class AbstractMaterializedViewRule implements ExplorationRuleFac
         long materializationId = context.generateMaterializationIdentifier().hashCode();
         Boolean cachedCheckResult = cascadesContext.getMemo().materializationHasChecked(this.getClass(),
                 materializationId);
-        try {
-            LOG.info("Thread.sleep");
-            Thread.sleep(5000L);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        // try {
+        //     LOG.info("Thread.sleep");
+        //     Thread.sleep(5000L);
+        // } catch (InterruptedException e) {
+        //     throw new RuntimeException(e);
+        // }
         // for (int i = 0; i < 100; i++) {
         //     long start = System.currentTimeMillis();
         //     for (int j = 0; j < 1000; j++) {
