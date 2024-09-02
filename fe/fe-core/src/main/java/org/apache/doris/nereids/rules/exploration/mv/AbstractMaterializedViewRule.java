@@ -845,6 +845,11 @@ public abstract class AbstractMaterializedViewRule implements ExplorationRuleFac
         long materializationId = context.generateMaterializationIdentifier().hashCode();
         Boolean cachedCheckResult = cascadesContext.getMemo().materializationHasChecked(this.getClass(),
                 materializationId);
+        for (int i = 0; i < 100; i++) {
+            long start = System.currentTimeMillis();
+            queryPlan.treeString();
+            LOG.info("queryPlan num: {}, use: {}", i, System.currentTimeMillis() - start);
+        }
         if (cachedCheckResult == null) {
             // need check in real time
             boolean checkResult = checkMaterializationPattern(context.getStructInfo(), cascadesContext);
@@ -853,11 +858,6 @@ public abstract class AbstractMaterializedViewRule implements ExplorationRuleFac
                         "View struct info is invalid", () -> String.format("view plan is %s",
                                 context.getStructInfo().getOriginalPlan().treeString()));
                 // tmp to location question
-                for (int i = 0; i < 100; i++) {
-                    long start = System.currentTimeMillis();
-                    queryPlan.treeString();
-                    LOG.info("queryPlan num: {}, use: {}", i, System.currentTimeMillis() - start);
-                }
                 if (LOG.isDebugEnabled()) {
                     LOG.debug(String.format("View struct info is invalid, mv identifier is %s, query plan is %s,"
                                     + "view plan is %s",
