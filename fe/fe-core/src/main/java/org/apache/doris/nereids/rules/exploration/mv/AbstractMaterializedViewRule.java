@@ -846,17 +846,18 @@ public abstract class AbstractMaterializedViewRule implements ExplorationRuleFac
         Boolean cachedCheckResult = cascadesContext.getMemo().materializationHasChecked(this.getClass(),
                 materializationId);
         try {
-            Thread.sleep(10000L);
+            LOG.info("Thread.sleep");
+            Thread.sleep(5000L);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        for (int i = 0; i < 100; i++) {
-            long start = System.currentTimeMillis();
-            for (int j = 0; j < 1000; j++) {
-                queryPlan.treeString();
-            }
-            LOG.info("queryPlan num: {}, use: {}", i, System.currentTimeMillis() - start);
-        }
+        // for (int i = 0; i < 100; i++) {
+        //     long start = System.currentTimeMillis();
+        //     for (int j = 0; j < 1000; j++) {
+        //         queryPlan.treeString();
+        //     }
+        //     LOG.info("queryPlan num: {}, use: {}", i, System.currentTimeMillis() - start);
+        // }
         if (cachedCheckResult == null) {
             // need check in real time
             boolean checkResult = checkMaterializationPattern(context.getStructInfo(), cascadesContext);
