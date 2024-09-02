@@ -2950,6 +2950,15 @@ public class OlapTable extends Table implements MTMVRelatedTableIf, GsonPostProc
 
     // Get the table versions in batch.
     public static List<Long> getVisibleVersionInBatch(Collection<OlapTable> tables) {
+        try {
+            LOG.info("=====================1======================getVisibleVersion Thread.sleep");
+            Thread.sleep(5000L);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        if (Config.isNotCloudMode()) {
+            return tableAttributes.getVisibleVersion();
+        }
         if (tables.isEmpty()) {
             return new ArrayList<>();
         }
