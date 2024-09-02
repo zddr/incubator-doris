@@ -2956,9 +2956,6 @@ public class OlapTable extends Table implements MTMVRelatedTableIf, GsonPostProc
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        if (Config.isNotCloudMode()) {
-            return tableAttributes.getVisibleVersion();
-        }
         if (tables.isEmpty()) {
             return new ArrayList<>();
         }
