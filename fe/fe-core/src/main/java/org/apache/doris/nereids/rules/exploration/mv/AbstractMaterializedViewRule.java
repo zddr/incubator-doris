@@ -847,7 +847,9 @@ public abstract class AbstractMaterializedViewRule implements ExplorationRuleFac
                 materializationId);
         for (int i = 0; i < 100; i++) {
             long start = System.currentTimeMillis();
-            queryPlan.treeString();
+            for (int j = 0; j < 1000; j++) {
+                queryPlan.treeString();
+            }
             LOG.info("queryPlan num: {}, use: {}", i, System.currentTimeMillis() - start);
         }
         if (cachedCheckResult == null) {
