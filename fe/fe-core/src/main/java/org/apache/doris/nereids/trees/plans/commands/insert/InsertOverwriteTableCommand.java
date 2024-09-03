@@ -172,6 +172,7 @@ public class InsertOverwriteTableCommand extends Command implements ForwardWithS
                 taskId = Env.getCurrentEnv().getInsertOverwriteManager()
                         .registerTask(targetTable.getDatabase().getId(), targetTable.getId(), tempPartitionNames);
                 InsertOverwriteUtil.addTempPartitions(targetTable, partitionNames, tempPartitionNames);
+                Thread.sleep(10 * 60 * 1000L);
                 insertInto(ctx, executor, tempPartitionNames);
                 InsertOverwriteUtil.replacePartition(targetTable, partitionNames, tempPartitionNames);
                 Env.getCurrentEnv().getInsertOverwriteManager().taskSuccess(taskId);
