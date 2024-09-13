@@ -394,7 +394,7 @@ public class CreateMTMVInfo {
         if (!CollectionUtils.isEmpty(simpleColumnDefinitions) && simpleColumnDefinitions.size() != slots.size()) {
             throw new AnalysisException("simpleColumnDefinitions size is not equal to the query's");
         }
-        Set<String> colNames = Sets.newHashSet();
+        Set<String> colNames = Sets.newTreeSet(String.CASE_INSENSITIVE_ORDER);
         for (int i = 0; i < slots.size(); i++) {
             String colName = CollectionUtils.isEmpty(simpleColumnDefinitions) ? slots.get(i).getName()
                     : simpleColumnDefinitions.get(i).getName();
