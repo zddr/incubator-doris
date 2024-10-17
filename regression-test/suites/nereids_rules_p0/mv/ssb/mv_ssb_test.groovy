@@ -120,6 +120,11 @@ suite("mv_ssb_test") {
             GROUP BY d_year, c_nation
             ORDER BY d_year, c_nation;
     """
+    logger.info("==========start===========")
+    sql """
+        insert overwrite table t1 ${query4_1}
+        """
+    logger.info("==========end===========")
     async_mv_rewrite_success(db, mv4_1, query4_1, "mv4_1")
     sql """ DROP MATERIALIZED VIEW IF EXISTS mv4_1"""
 }
