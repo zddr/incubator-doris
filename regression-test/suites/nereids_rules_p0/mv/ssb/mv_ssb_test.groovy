@@ -88,7 +88,6 @@ suite("mv_ssb_test") {
     sql "use ${db}"
     sql "set runtime_filter_mode=OFF"
     sql "SET enable_nereids_timeout = false"
-    sql "SET BATCH_SIZE = 4064"
 
     def mv4_1 = """
             SELECT d_year, c_nation,
@@ -122,7 +121,7 @@ suite("mv_ssb_test") {
     """
     logger.info("==========start===========")
     sql """
-        insert into t1 ${query4_1}
+        insert overwrite table t1 ${query4_1}
         """
     logger.info("==========end===========")
     async_mv_rewrite_success(db, mv4_1, query4_1, "mv4_1")
