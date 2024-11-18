@@ -1153,7 +1153,7 @@ public class Auth implements Writable {
     public long getMaxConn(String qualifiedUser) {
         readLock();
         try {
-            return propertyMgr.getMaxConn(qualifiedUser);
+            return 1000L;
         } finally {
             readUnlock();
         }
