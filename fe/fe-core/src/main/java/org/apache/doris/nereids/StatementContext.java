@@ -20,10 +20,14 @@ package org.apache.doris.nereids;
 import org.apache.doris.analysis.StatementBase;
 import org.apache.doris.catalog.TableIf;
 import org.apache.doris.catalog.constraint.TableIdentifier;
+import org.apache.doris.common.AnalysisException;
 import org.apache.doris.common.FormatOptions;
 import org.apache.doris.common.Id;
 import org.apache.doris.common.IdGenerator;
 import org.apache.doris.common.Pair;
+import org.apache.doris.datasource.MvccTable;
+import org.apache.doris.mtmv.BaseTableInfo;
+import org.apache.doris.mtmv.MTMVUtil;
 import org.apache.doris.nereids.hint.Hint;
 import org.apache.doris.nereids.memo.Group;
 import org.apache.doris.nereids.rules.analysis.ColumnAliasGenerator;
@@ -69,6 +73,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
@@ -173,6 +178,8 @@ public class StatementContext implements Closeable {
     private String disableJoinReorderReason;
 
     private Backend groupCommitMergeBackend;
+
+    private final Map<BaseTableInfo, Long> refSnapshotIds = Maps.newHashMap();
 
     public StatementContext() {
         this(ConnectContext.get(), null, 0);
@@ -301,7 +308,9 @@ public class StatementContext implements Closeable {
         this.parsedStatement = parsedStatement;
     }
 
-    /** getOrRegisterCache */
+    /**
+     * getOrRegisterCache
+     */
     public synchronized <T> T getOrRegisterCache(String key, Supplier<T> cacheSupplier) {
         Supplier<T> supplier = (Supplier<T>) contextCacheMap.get(key);
         if (supplier == null) {
@@ -331,8 +340,8 @@ public class StatementContext implements Closeable {
 
     public ColumnAliasGenerator getColumnAliasGenerator() {
         return columnAliasGenerator == null
-            ? columnAliasGenerator = new ColumnAliasGenerator()
-            : columnAliasGenerator;
+                ? columnAliasGenerator = new ColumnAliasGenerator()
+                : columnAliasGenerator;
     }
 
     public String generateColumnName() {
@@ -433,7 +442,9 @@ public class StatementContext implements Closeable {
         return relationIdToStatisticsMap;
     }
 
-    /** addTableReadLock */
+    /**
+     * addTableReadLock
+     */
     public synchronized void addTableReadLock(TableIf tableIf) {
         if (!tableIf.needReadLockWhenPlan()) {
             return;
@@ -450,7 +461,9 @@ public class StatementContext implements Closeable {
                 originStatement == null ? null : originStatement.originStmt, tableIf::readUnlock));
     }
 
-    /** releasePlannerResources */
+    /**
+     * releasePlannerResources
+     */
     public synchronized void releasePlannerResources() {
         Throwable throwable = null;
         while (!plannerResources.isEmpty()) {
@@ -508,6 +521,67 @@ public class StatementContext implements Closeable {
         this.plannerHooks.add(plannerHook);
     }
 
+    /**
+     * refTables
+     *
+     * @param tables tables
+     */
+    public void refTables(Map<List<String>, TableIf> tables) {
+        if (tables == null) {
+            return;
+        }
+        for (TableIf tableIf : tables.values()) {
+            if (tableIf instanceof MvccTable) {
+                MvccTable mvccTable = (MvccTable) tableIf;
+                long snapshotId = fetchSnapshotIdIfNotExist(mvccTable);
+                mvccTable.ref(snapshotId);
+            }
+        }
+    }
+
+    /**
+     * unrefTables
+     */
+    public void unrefTables() {
+        for (Entry<BaseTableInfo, Long> entry : refSnapshotIds.entrySet()) {
+            try {
+                MvccTable table = (MvccTable) MTMVUtil.getTable(entry.getKey());
+                table.unref(entry.getValue());
+            } catch (AnalysisException e) {
+                LOG.warn(e);
+            }
+        }
+    }
+
+    private long fetchSnapshotIdIfNotExist(MvccTable mvccTable) {
+        BaseTableInfo baseTableInfo = new BaseTableInfo(mvccTable);
+        if (!refSnapshotIds.containsKey(baseTableInfo)) {
+            long snapshotId = mvccTable.getLatestSnapshotId();
+            refSnapshotIds.put(baseTableInfo, snapshotId);
+        }
+        return refSnapshotIds.get(baseTableInfo);
+    }
+
+    /**
+     * setSnapshotId
+     *
+     * @param mvccTable mvccTable
+     * @param snapshotId snapshotId
+     */
+    public void setSnapshotId(MvccTable mvccTable, long snapshotId) {
+        refSnapshotIds.put(new BaseTableInfo(mvccTable), snapshotId);
+    }
+
+    /**
+     * getSnapshotId
+     *
+     * @param mvccTable mvccTable
+     * @return snapshotId
+     */
+    public long getSnapshotId(MvccTable mvccTable) {
+        return refSnapshotIds.get(new BaseTableInfo(mvccTable));
+    }
+
     private static class CloseableResource implements Closeable {
         public final String resourceName;
         public final String threadName;
@@ -552,7 +626,9 @@ public class StatementContext implements Closeable {
         return keySlots.contains(slot);
     }
 
-    /** Get table id with lazy */
+    /**
+     * Get table id with lazy
+     */
     public TableId getTableId(TableIf tableIf) {
         TableIdentifier tableIdentifier = new TableIdentifier(tableIf);
         TableId tableId = this.tableIdMapping.get(tableIdentifier);
