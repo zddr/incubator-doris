@@ -100,6 +100,7 @@ public class LdapClient {
 
             TransactionAwareContextSourceProxy proxy = new TransactionAwareContextSourceProxy(poolingContextSource);
             ldapTemplatePool = new LdapTemplate(proxy);
+            ldapTemplatePool.setIgnorePartialResultException(true);
         }
 
         public boolean checkUpdate(String ldapPassword) {
