@@ -103,20 +103,30 @@ public class LdapManager {
 
     public boolean checkUserPasswd(String fullName, String passwd) {
         String userName = ClusterNamespace.getNameFromFullName(fullName);
+        LOG.info("LdapManager checkUserPasswd, fullName: {}, userName: {}, passwd: {}", fullName, userName, passwd);
         if (AuthenticateType.getAuthTypeConfig() != AuthenticateType.LDAP || Strings.isNullOrEmpty(userName)
                 || Objects.isNull(passwd)) {
+            LOG.info("LdapManager authType: {}", AuthenticateType.getAuthTypeConfig());
             return false;
         }
         LdapUserInfo ldapUserInfo = getUserInfo(fullName);
+        if (Objects.isNull(ldapUserInfo)) {
+            LOG.info("ldapUserInfo is null");
+            return false;
+        }
+        LOG.info("ldapUserInfo: {}", ldapUserInfo);
         if (Objects.isNull(ldapUserInfo) || !ldapUserInfo.isExists()) {
+            LOG.info("ldapUserInfo not exist");
             return false;
         }
 
         if (ldapUserInfo.isSetPasswd() && ldapUserInfo.getPasswd().equals(passwd)) {
+            LOG.info("return true");
             return true;
         }
         boolean isRightPasswd = ldapClient.checkPassword(userName, passwd);
         if (!isRightPasswd) {
+            LOG.info("isRightPasswd false");
             return false;
         }
         updatePasswd(ldapUserInfo, passwd);

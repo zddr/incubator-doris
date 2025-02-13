@@ -22,6 +22,7 @@ import org.apache.doris.mysql.privilege.Role;
 
 import java.util.Objects;
 import java.util.Set;
+import java.util.StringJoiner;
 
 /**
  * Used to cache LDAP information of user, such as password and privileges.
@@ -98,5 +99,17 @@ public class LdapUserInfo {
     // Return true if LdapUserInfo is exceeded the time limit;
     public boolean checkTimeout() {
         return System.currentTimeMillis() > lastTimeStamp + LdapConfig.ldap_user_cache_timeout_s * 1000;
+    }
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", LdapUserInfo.class.getSimpleName() + "[", "]")
+                .add("userName='" + userName + "'")
+                .add("isExists=" + isExists)
+                .add("isSetPasswd=" + isSetPasswd)
+                .add("passwd='" + passwd + "'")
+                .add("roles=" + roles)
+                .add("lastTimeStamp=" + lastTimeStamp)
+                .toString();
     }
 }

@@ -146,6 +146,7 @@ public class LdapClient {
                     .filter(getUserFilter(LdapConfig.ldap_user_filter, userName)), password);
             return true;
         } catch (Exception e) {
+            LOG.info("checkPassword exception:", e);
             return false;
         }
     }

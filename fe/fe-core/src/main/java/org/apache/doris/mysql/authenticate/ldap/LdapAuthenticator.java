@@ -76,8 +76,10 @@ public class LdapAuthenticator implements Authenticator {
             return false;
         }
         if (!Env.getCurrentEnv().getAuth().getLdapManager().doesUserExist(qualifiedUser)) {
+            LOG.info("canDeal return false, qualifiedUser: {} ", qualifiedUser);
             return false;
         }
+        LOG.info("canDeal return true, qualifiedUser: {} ", qualifiedUser);
         return true;
     }
 
