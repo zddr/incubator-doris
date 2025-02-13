@@ -72,6 +72,7 @@ public class LdapClient {
             contextSource.setPassword(ldapPassword);
             contextSource.afterPropertiesSet();
             ldapTemplateNoPool = new LdapTemplate(contextSource);
+            ldapTemplateNoPool.setIgnorePartialResultException(true);
         }
 
         private void setLdapTemplatePool(String ldapPassword) {
