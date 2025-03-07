@@ -78,7 +78,7 @@ suite("single_thread_cancel_mtmv_fail_test") {
 
         def task_list = sql """select * from tasks("type"="mv") where JobName="${job_name}" order by StartTime;"""
         logger.info("task_list:" + task_list)
-        sleep(60 * 1000)
+        sleep(30 * 1000)
         task_list = sql """select * from tasks("type"="mv") where JobName="${job_name}" order by StartTime;"""
         logger.info("task_list:" + task_list)
 
