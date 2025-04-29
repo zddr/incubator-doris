@@ -492,7 +492,8 @@ public class SubqueryToApply implements AnalysisRuleFactory {
                 projects.add(new Alias(new AssertTrue(
                         ExpressionUtils.or(new IsNull(countSlot),
                                 new LessThanEqual(countSlot, new IntegerLiteral(1))),
-                        new VarcharLiteral("correlate scalar subquery must return only 1 row"))));
+                        new VarcharLiteral(String.format("correlate scalar subquery: %s must return only 1 row",
+                                oldSubqueryOutput.toString())))));
             } else {
                 projects.add(oldSubqueryOutput);
             }
