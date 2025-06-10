@@ -50,6 +50,7 @@ import org.apache.doris.common.util.InternalDatabaseUtil;
 import org.apache.doris.common.util.MetaLockUtils;
 import org.apache.doris.common.util.TimeUtils;
 import org.apache.doris.metric.MetricRepo;
+import org.apache.doris.mtmv.MTMVUtils;
 import org.apache.doris.mysql.privilege.PrivPredicate;
 import org.apache.doris.persist.BatchRemoveTransactionsOperationV2;
 import org.apache.doris.persist.EditLog;
@@ -1007,6 +1008,9 @@ public class DatabaseTransactionMgr {
         // Otherwise, there is no way for stream load to query the result right after loading finished,
         // even if we call "sync" before querying.
         transactionState.countdownVisibleLatch();
+        for (TableIf tableIf : tableList) {
+            MTMVUtils.onCommit(tableIf);
+        }
         LOG.info("finish transaction {} successfully, publish times {}, publish result {}",
                 transactionState, transactionState.getPublishCount(), publishResult.name());
     }

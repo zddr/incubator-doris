@@ -17,12 +17,18 @@
 
 package org.apache.doris.mtmv;
 
+import org.apache.doris.catalog.Database;
+import org.apache.doris.catalog.Env;
+import org.apache.doris.catalog.MaterializedView;
+import org.apache.doris.catalog.Table;
+import org.apache.doris.catalog.TableIf;
 import org.apache.doris.mtmv.metadata.MTMVJob;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class MTMVUtils {
@@ -133,5 +139,18 @@ public class MTMVUtils {
     public static String getTimeString(long timestamp) {
         LocalDateTime time = LocalDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneId.systemDefault());
         return time.toString();
+    }
+
+    public static void onCommit(TableIf tableIf) {
+        List<Database> dbs = Env.getCurrentEnv().getInternalCatalog().getDbs();
+        for (Database database : dbs) {
+            List<Table> tables = database.getTables();
+            for (Table table : tables) {
+                if (table instanceof MaterializedView) {
+                    MaterializedView mv = (MaterializedView) table;
+                    mv.onCommit(tableIf);
+                }
+            }
+        }
     }
 }

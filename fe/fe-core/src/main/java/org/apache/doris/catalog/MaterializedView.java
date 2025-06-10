@@ -19,13 +19,19 @@ package org.apache.doris.catalog;
 
 import org.apache.doris.analysis.MVRefreshInfo;
 import org.apache.doris.analysis.MVRefreshInfo.BuildMode;
+import org.apache.doris.analysis.MVRefreshInfo.RefreshTrigger;
 import org.apache.doris.catalog.OlapTableFactory.MaterializedViewParams;
+import org.apache.doris.common.DdlException;
 import org.apache.doris.common.FeConstants;
 import org.apache.doris.common.io.Text;
 import org.apache.doris.meta.MetaContext;
+import org.apache.doris.mtmv.MTMVJobFactory;
+import org.apache.doris.mtmv.metadata.MTMVJob;
 import org.apache.doris.persist.gson.GsonUtils;
 
 import com.google.gson.annotations.SerializedName;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -34,17 +40,21 @@ import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 
 public class MaterializedView extends OlapTable {
+    private static final Logger LOG = LogManager.getLogger(MaterializedView.class);
     @SerializedName("buildMode")
     private BuildMode buildMode;
     @SerializedName("refreshInfo")
     private MVRefreshInfo refreshInfo;
     @SerializedName("query")
     private String query;
+    @SerializedName("baseTables")
+    private Set<String> baseTables;
 
     private final ReentrantLock mvTaskLock = new ReentrantLock(true);
 
@@ -96,6 +106,10 @@ public class MaterializedView extends OlapTable {
         return query;
     }
 
+    public Set<String> getBaseTables() {
+        return baseTables;
+    }
+
     @Override
     public void write(DataOutput out) throws IOException {
         super.write(out);
@@ -124,6 +138,21 @@ public class MaterializedView extends OlapTable {
             return cloned;
         } finally {
             MetaContext.remove();
+        }
+    }
+
+    public void onCommit(TableIf tableIf) {
+        if (!refreshInfo.getTriggerInfo().getRefreshTrigger().equals(RefreshTrigger.COMMIT)) {
+            return;
+        }
+        if (!baseTables.contains(tableIf.getName())) {
+            return;
+        }
+        MTMVJob mtmvJob = MTMVJobFactory.genOnceJob(this, this.getQualifiedDbName());
+        try {
+            Env.getCurrentEnv().getMTMVJobManager().createJob(mtmvJob, false);
+        } catch (DdlException e) {
+            LOG.warn("onCommit failed,mvName:{},tableName:{}", getName(), tableIf.getName(), e);
         }
     }
 }
