@@ -66,9 +66,9 @@ public class CreateMultiTableMaterializedViewStmt extends CreateTableStmt {
 
     @Override
     public void analyze(Analyzer analyzer) throws UserException {
-        if (true) {
-            throw new UserException("Multi table materialized view was not graduated.");
-        }
+        // if (true) {
+        //     throw new UserException("Multi table materialized view was not graduated.");
+        // }
         refreshInfo.analyze(analyzer);
         queryStmt.setNeedToSql(true);
         queryStmt.setToSQLWithHint(true);
