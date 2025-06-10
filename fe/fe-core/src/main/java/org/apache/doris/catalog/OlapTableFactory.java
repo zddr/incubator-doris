@@ -28,6 +28,7 @@ import org.apache.doris.catalog.TableIf.TableType;
 import com.google.common.base.Preconditions;
 
 import java.util.List;
+import java.util.Set;
 
 public class OlapTableFactory {
 
@@ -48,6 +49,7 @@ public class OlapTableFactory {
         public MVRefreshInfo.BuildMode buildMode;
         public MVRefreshInfo mvRefreshInfo;
         public QueryStmt queryStmt;
+        public Set<String> baseTables;
     }
 
     private BuildParams params;
@@ -151,6 +153,14 @@ public class OlapTableFactory {
         return this;
     }
 
+    public OlapTableFactory withBaseTables(Set<String> baseTables) {
+        Preconditions.checkState(params instanceof MaterializedViewParams, "Invalid argument for "
+                + params.getClass().getSimpleName());
+        MaterializedViewParams materializedViewParams = (MaterializedViewParams) params;
+        materializedViewParams.baseTables = baseTables;
+        return this;
+    }
+
     public OlapTableFactory withExtraParams(DdlStmt stmt) {
         boolean isMaterializedView = stmt instanceof CreateMultiTableMaterializedViewStmt;
         if (!isMaterializedView) {
@@ -160,6 +170,7 @@ public class OlapTableFactory {
             CreateMultiTableMaterializedViewStmt createMVStmt = (CreateMultiTableMaterializedViewStmt) stmt;
             return withBuildMode(createMVStmt.getBuildMode())
                     .withRefreshInfo(createMVStmt.getRefreshInfo())
+                    .withBaseTables(createMVStmt.getTables().keySet())
                     .withQueryStmt(createMVStmt.getQueryStmt());
         }
     }
