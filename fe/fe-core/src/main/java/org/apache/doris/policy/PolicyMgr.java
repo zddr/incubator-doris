@@ -110,7 +110,7 @@ public class PolicyMgr implements Writable {
             long policyId = Env.getCurrentEnv().getNextId();
             StoragePolicy defaultStoragePolicy = new StoragePolicy(policyId, StoragePolicy.DEFAULT_STORAGE_POLICY_NAME);
             unprotectedAdd(defaultStoragePolicy);
-            Env.getCurrentEnv().getEditLog().logCreatePolicy(defaultStoragePolicy);
+            // Env.getCurrentEnv().getEditLog().logCreatePolicy(defaultStoragePolicy);
         } finally {
             writeUnlock();
         }
