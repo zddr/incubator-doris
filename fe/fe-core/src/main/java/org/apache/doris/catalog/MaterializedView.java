@@ -53,7 +53,7 @@ public class MaterializedView extends OlapTable {
     private MVRefreshInfo refreshInfo;
     @SerializedName("query")
     private String query;
-    @SerializedName("baseTables")
+    // @SerializedName("baseTables")
     private Set<String> baseTables;
 
     private final ReentrantLock mvTaskLock = new ReentrantLock(true);
