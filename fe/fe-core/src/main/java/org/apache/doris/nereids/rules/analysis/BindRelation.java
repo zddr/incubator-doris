@@ -475,9 +475,9 @@ public class BindRelation extends OneAnalysisRuleFactory {
                             Optional.ofNullable(unboundRelation.getScanParams()));
                 case SCHEMA:
                     // schema table's name is case-insensitive, we need save its name in SQL text to get correct case.
-                    LogicalSubQueryAlias<LogicalSchemaScan> subQueryAlias
-                            = new LogicalSubQueryAlias<>(qualifiedTableName,
-                            new LogicalSchemaScan(unboundRelation.getRelationId(), table, qualifierWithoutTableName));
+                    LogicalSubQueryAlias<LogicalSchemaScan> subQueryAlias = new LogicalSubQueryAlias<>(
+                            qualifiedTableName,
+                                new LogicalSchemaScan(unboundRelation.getRelationId(), table, qualifierWithoutTableName));
                     if (qualifiedTableName.get(2).equalsIgnoreCase("active_queries")) {
                         List<Expression> groupByExpressions = new ArrayList<>();
                         List<NamedExpression> outputExpressions = new ArrayList<>();
