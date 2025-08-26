@@ -66,6 +66,7 @@ import org.apache.doris.nereids.trees.expressions.SlotReference;
 import org.apache.doris.nereids.trees.expressions.StatementScopeIdGenerator;
 import org.apache.doris.nereids.trees.expressions.functions.AggCombinerFunctionBuilder;
 import org.apache.doris.nereids.trees.expressions.functions.FunctionBuilder;
+import org.apache.doris.nereids.trees.expressions.functions.agg.AnyValue;
 import org.apache.doris.nereids.trees.expressions.functions.agg.BitmapUnion;
 import org.apache.doris.nereids.trees.expressions.functions.agg.HllUnion;
 import org.apache.doris.nereids.trees.expressions.functions.agg.Max;
@@ -474,8 +475,35 @@ public class BindRelation extends OneAnalysisRuleFactory {
                             Optional.ofNullable(unboundRelation.getScanParams()));
                 case SCHEMA:
                     // schema table's name is case-insensitive, we need save its name in SQL text to get correct case.
-                    return new LogicalSubQueryAlias<>(qualifiedTableName,
+                    LogicalSubQueryAlias<LogicalSchemaScan> subQueryAlias
+                            = new LogicalSubQueryAlias<>(qualifiedTableName,
                             new LogicalSchemaScan(unboundRelation.getRelationId(), table, qualifierWithoutTableName));
+                    if (qualifiedTableName.get(2).equalsIgnoreCase("active_queries")) {
+                        List<Expression> groupByExpressions = new ArrayList<>();
+                        List<NamedExpression> outputExpressions = new ArrayList<>();
+                        List<Slot> output = subQueryAlias.getOutput();
+                        for (Slot slot : output) {
+                            if (slot.getName().equalsIgnoreCase("QUERY_ID")) {
+                                groupByExpressions.add(slot);
+                                outputExpressions.add(slot);
+                            } else if (slot.getName().equalsIgnoreCase("QUERY_TIME_MS")) {
+                                Expression function = new Sum(slot);
+                                Alias alias = new Alias(StatementScopeIdGenerator.newExprId(),
+                                        ImmutableList.of(function),
+                                        slot.getName(), qualifiedTableName, true);
+                                outputExpressions.add(alias);
+                            } else {
+                                Expression function = new AnyValue(slot);
+                                Alias alias = new Alias(StatementScopeIdGenerator.newExprId(),
+                                        ImmutableList.of(function),
+                                        slot.getName(), qualifiedTableName, true);
+                                outputExpressions.add(alias);
+                            }
+                        }
+                        return new LogicalAggregate<>(groupByExpressions, outputExpressions, subQueryAlias);
+                    } else {
+                        return subQueryAlias;
+                    }
                 case JDBC_EXTERNAL_TABLE:
                 case JDBC:
                     return new LogicalJdbcScan(unboundRelation.getRelationId(), table, qualifierWithoutTableName);
