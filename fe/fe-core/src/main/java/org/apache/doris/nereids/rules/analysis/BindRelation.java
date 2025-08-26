@@ -378,7 +378,7 @@ public class BindRelation extends OneAnalysisRuleFactory {
     }
 
     private LogicalPlan getLogicalPlan(TableIf table, UnboundRelation unboundRelation,
-                                       List<String> qualifiedTableName, CascadesContext cascadesContext) {
+            List<String> qualifiedTableName, CascadesContext cascadesContext) {
         // for create view stmt replace tableName to ctl.db.tableName
         unboundRelation.getIndexInSqlString().ifPresent(pair -> {
             StatementContext statementContext = cascadesContext.getStatementContext();
@@ -445,7 +445,7 @@ public class BindRelation extends OneAnalysisRuleFactory {
                             // or else this exception will not be thrown
                             // because legacy planner will retry and thrown other exception
                             throw new UnsupportedOperationException(
-                                "iceberg view not supported with snapshot time/version travel");
+                                    "iceberg view not supported with snapshot time/version travel");
                         }
                         isView = true;
                         String icebergCatalog = icebergExternalTable.getCatalog().getName();
@@ -457,13 +457,13 @@ public class BindRelation extends OneAnalysisRuleFactory {
                     }
                     if (icebergExternalTable.isView()) {
                         throw new UnsupportedOperationException(
-                            "please set enable_query_iceberg_views=true to enable query iceberg views");
+                                "please set enable_query_iceberg_views=true to enable query iceberg views");
                     }
                     return new LogicalFileScan(unboundRelation.getRelationId(), (ExternalTable) table,
-                        qualifierWithoutTableName, ImmutableList.of(),
-                        unboundRelation.getTableSample(),
-                        unboundRelation.getTableSnapshot(),
-                        Optional.ofNullable(unboundRelation.getScanParams()));
+                            qualifierWithoutTableName, ImmutableList.of(),
+                            unboundRelation.getTableSample(),
+                            unboundRelation.getTableSnapshot(),
+                            Optional.ofNullable(unboundRelation.getScanParams()));
                 case PAIMON_EXTERNAL_TABLE:
                 case MAX_COMPUTE_EXTERNAL_TABLE:
                 case TRINO_CONNECTOR_EXTERNAL_TABLE:
