@@ -27,6 +27,9 @@ import org.apache.doris.catalog.FunctionRegistry;
 import org.apache.doris.catalog.KeysType;
 import org.apache.doris.catalog.OlapTable;
 import org.apache.doris.catalog.Partition;
+import org.apache.doris.catalog.SchemaTable;
+import org.apache.doris.catalog.SchemaTable.SchemaColumn;
+import org.apache.doris.catalog.SchemaTable.SchemaTableAggregateType;
 import org.apache.doris.catalog.TableIf;
 import org.apache.doris.catalog.Type;
 import org.apache.doris.catalog.View;
@@ -67,6 +70,7 @@ import org.apache.doris.nereids.trees.expressions.StatementScopeIdGenerator;
 import org.apache.doris.nereids.trees.expressions.functions.AggCombinerFunctionBuilder;
 import org.apache.doris.nereids.trees.expressions.functions.FunctionBuilder;
 import org.apache.doris.nereids.trees.expressions.functions.agg.AnyValue;
+import org.apache.doris.nereids.trees.expressions.functions.agg.Avg;
 import org.apache.doris.nereids.trees.expressions.functions.agg.BitmapUnion;
 import org.apache.doris.nereids.trees.expressions.functions.agg.HllUnion;
 import org.apache.doris.nereids.trees.expressions.functions.agg.Max;
@@ -208,20 +212,20 @@ public class BindRelation extends OneAnalysisRuleFactory {
                 Long indexId = olapTable.getIndexIdByName(indexName.get());
                 if (indexId == null) {
                     throw new AnalysisException("Table " + olapTable.getName()
-                        + " doesn't have materialized view " + indexName.get());
+                            + " doesn't have materialized view " + indexName.get());
                 }
                 PreAggStatus preAggStatus = olapTable.isDupKeysOrMergeOnWrite() ? PreAggStatus.unset()
                         : PreAggStatus.off("For direct index scan on mor/agg.");
 
                 scan = new LogicalOlapScan(unboundRelation.getRelationId(),
-                    (OlapTable) table, qualifier, tabletIds,
-                    CollectionUtils.isEmpty(partIds) ? ((OlapTable) table).getPartitionIds() : partIds, indexId,
-                    preAggStatus, CollectionUtils.isEmpty(partIds) ? ImmutableList.of() : partIds,
-                    unboundRelation.getHints(), unboundRelation.getTableSample(), ImmutableList.of());
+                        (OlapTable) table, qualifier, tabletIds,
+                        CollectionUtils.isEmpty(partIds) ? ((OlapTable) table).getPartitionIds() : partIds, indexId,
+                        preAggStatus, CollectionUtils.isEmpty(partIds) ? ImmutableList.of() : partIds,
+                        unboundRelation.getHints(), unboundRelation.getTableSample(), ImmutableList.of());
             } else {
                 scan = new LogicalOlapScan(unboundRelation.getRelationId(),
-                    (OlapTable) table, qualifier, tabletIds, unboundRelation.getHints(),
-                    unboundRelation.getTableSample(), ImmutableList.of());
+                        (OlapTable) table, qualifier, tabletIds, unboundRelation.getHints(),
+                        unboundRelation.getTableSample(), ImmutableList.of());
             }
         }
         if (!tabletIds.isEmpty()) {
@@ -259,6 +263,7 @@ public class BindRelation extends OneAnalysisRuleFactory {
 
     /**
      * add LogicalAggregate above olapScan for preAgg
+     *
      * @param olapScan olap scan plan
      * @return rewritten plan
      */
@@ -479,22 +484,19 @@ public class BindRelation extends OneAnalysisRuleFactory {
                             qualifierWithoutTableName);
                     LogicalSubQueryAlias<LogicalSchemaScan> subQueryAlias = new LogicalSubQueryAlias<>(
                             qualifiedTableName, schemaScan);
-                    if (qualifiedTableName.get(2).equalsIgnoreCase("active_queries")) {
+                    SchemaTable schemaTable = (SchemaTable) schemaScan.getTable();
+                    if (schemaTable.shouldAddAgg()) {
                         List<Expression> groupByExpressions = new ArrayList<>();
                         List<NamedExpression> outputExpressions = new ArrayList<>();
                         List<Slot> output = subQueryAlias.getOutput();
                         for (Slot slot : output) {
-                            if (slot.getName().equalsIgnoreCase("QUERY_ID")) {
+                            SchemaColumn column = (SchemaColumn) schemaTable.getColumn(slot.getName());
+                            if (column.isKey()) {
                                 groupByExpressions.add(slot);
                                 outputExpressions.add(slot);
-                            } else if (slot.getName().equalsIgnoreCase("QUERY_TIME_MS")) {
-                                Expression function = new Sum(slot);
-                                Alias alias = new Alias(StatementScopeIdGenerator.newExprId(),
-                                        ImmutableList.of(function),
-                                        slot.getName(), qualifiedTableName, true);
-                                outputExpressions.add(alias);
                             } else {
-                                Expression function = new AnyValue(slot);
+                                Expression function = generateAggBySchemaAggType(slot,
+                                        column.getSchemaTableAggregateType());
                                 Alias alias = new Alias(StatementScopeIdGenerator.newExprId(),
                                         ImmutableList.of(function),
                                         slot.getName(), qualifiedTableName, true);
@@ -530,6 +532,19 @@ public class BindRelation extends OneAnalysisRuleFactory {
                 }
             }
         }
+    }
+
+    private Expression generateAggBySchemaAggType(Slot slot, SchemaTableAggregateType schemaTableAggregateType) {
+        if (schemaTableAggregateType == SchemaTableAggregateType.AVG) {
+            return new Avg(slot);
+        } else if (schemaTableAggregateType == SchemaTableAggregateType.MAX) {
+            return new Max(slot);
+        } else if (schemaTableAggregateType == SchemaTableAggregateType.MIN) {
+            return new Min(slot);
+        } else if (schemaTableAggregateType == SchemaTableAggregateType.SUM) {
+            return new Sum(slot);
+        }
+        return new AnyValue(slot);
     }
 
     private Plan parseAndAnalyzeExternalView(

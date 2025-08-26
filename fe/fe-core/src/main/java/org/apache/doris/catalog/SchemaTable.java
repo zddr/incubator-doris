@@ -19,6 +19,7 @@ package org.apache.doris.catalog;
 
 import org.apache.doris.analysis.SchemaTableType;
 import org.apache.doris.common.SystemIdGenerator;
+import org.apache.doris.qe.ConnectContext;
 import org.apache.doris.thrift.TSchemaTable;
 import org.apache.doris.thrift.TTableDescriptor;
 import org.apache.doris.thrift.TTableType;
@@ -484,17 +485,19 @@ public class SchemaTable extends Table {
                                             ScalarType.createType(PrimitiveType.BIGINT))
                                     .build()))
             .put("active_queries", new SchemaTable(SystemIdGenerator.getNextId(), "active_queries", TableType.SCHEMA,
-                    builder().column("QUERY_ID", ScalarType.createVarchar(256))
+                    builder().column("QUERY_ID", ScalarType.createVarchar(256), null, true)
                             .column("QUERY_START_TIME", ScalarType.createVarchar(256))
-                            .column("QUERY_TIME_MS", ScalarType.createType(PrimitiveType.BIGINT))
-                            .column("WORKLOAD_GROUP_ID", ScalarType.createType(PrimitiveType.BIGINT))
+                            .column("QUERY_TIME_MS", ScalarType.createType(PrimitiveType.BIGINT),
+                                    SchemaTableAggregateType.MAX, false)
+                            .column("WORKLOAD_GROUP_ID", ScalarType.createType(PrimitiveType.BIGINT),
+                                    SchemaTableAggregateType.AVG, false)
                             .column("DATABASE", ScalarType.createVarchar(256))
                             .column("FRONTEND_INSTANCE", ScalarType.createVarchar(256))
                             .column("QUEUE_START_TIME", ScalarType.createVarchar(256))
                             .column("QUEUE_END_TIME", ScalarType.createVarchar(256))
                             .column("QUERY_STATUS", ScalarType.createVarchar(256))
                             .column("SQL", ScalarType.createStringType())
-                            .build()))
+                            .build(), true))
             .put("workload_groups", new SchemaTable(SystemIdGenerator.getNextId(), "workload_groups", TableType.SCHEMA,
                     builder().column("ID", ScalarType.createType(PrimitiveType.BIGINT))
                             .column("NAME", ScalarType.createVarchar(256))
@@ -669,30 +672,30 @@ public class SchemaTable extends Table {
             )
             .put("view_dependency",
                     new SchemaTable(SystemIdGenerator.getNextId(), "view_dependency", TableType.SCHEMA,
-                        builder().column("VIEW_CATALOG", ScalarType.createVarchar(NAME_CHAR_LEN))
-                            .column("VIEW_SCHEMA", ScalarType.createVarchar(NAME_CHAR_LEN))
-                            .column("VIEW_NAME", ScalarType.createVarchar(NAME_CHAR_LEN))
-                            .column("VIEW_TYPE", ScalarType.createVarchar(NAME_CHAR_LEN))
-                            .column("REF_CATALOG", ScalarType.createVarchar(NAME_CHAR_LEN))
-                            .column("REF_SCHEMA", ScalarType.createVarchar(NAME_CHAR_LEN))
-                            .column("REF_NAME", ScalarType.createVarchar(NAME_CHAR_LEN))
-                            .column("REF_TYPE", ScalarType.createVarchar(NAME_CHAR_LEN))
-                            .build())
+                            builder().column("VIEW_CATALOG", ScalarType.createVarchar(NAME_CHAR_LEN))
+                                    .column("VIEW_SCHEMA", ScalarType.createVarchar(NAME_CHAR_LEN))
+                                    .column("VIEW_NAME", ScalarType.createVarchar(NAME_CHAR_LEN))
+                                    .column("VIEW_TYPE", ScalarType.createVarchar(NAME_CHAR_LEN))
+                                    .column("REF_CATALOG", ScalarType.createVarchar(NAME_CHAR_LEN))
+                                    .column("REF_SCHEMA", ScalarType.createVarchar(NAME_CHAR_LEN))
+                                    .column("REF_NAME", ScalarType.createVarchar(NAME_CHAR_LEN))
+                                    .column("REF_TYPE", ScalarType.createVarchar(NAME_CHAR_LEN))
+                                    .build())
             )
             .put("encryption_keys",
                     new SchemaTable(SystemIdGenerator.getNextId(), "encryption_keys", TableType.SCHEMA,
-                        builder().column("ID", ScalarType.createStringType())
-                            .column("VERSION", ScalarType.createType(PrimitiveType.INT))
-                            .column("PARENT_ID", ScalarType.createStringType())
-                            .column("PARENT_VERSION", ScalarType.createType(PrimitiveType.INT))
-                            .column("TYPE", ScalarType.createStringType())
-                            .column("ALGORITHM", ScalarType.createStringType())
-                            .column("CIPHER", ScalarType.createStringType())
-                            .column("IV", ScalarType.createStringType())
-                            .column("CRC", ScalarType.createType(PrimitiveType.BIGINT))
-                            .column("CTIME", ScalarType.createType(PrimitiveType.DATETIMEV2))
-                            .column("MTIME", ScalarType.createType(PrimitiveType.DATETIMEV2))
-                            .build()))
+                            builder().column("ID", ScalarType.createStringType())
+                                    .column("VERSION", ScalarType.createType(PrimitiveType.INT))
+                                    .column("PARENT_ID", ScalarType.createStringType())
+                                    .column("PARENT_VERSION", ScalarType.createType(PrimitiveType.INT))
+                                    .column("TYPE", ScalarType.createStringType())
+                                    .column("ALGORITHM", ScalarType.createStringType())
+                                    .column("CIPHER", ScalarType.createStringType())
+                                    .column("IV", ScalarType.createStringType())
+                                    .column("CRC", ScalarType.createType(PrimitiveType.BIGINT))
+                                    .column("CTIME", ScalarType.createType(PrimitiveType.DATETIMEV2))
+                                    .column("MTIME", ScalarType.createType(PrimitiveType.DATETIMEV2))
+                                    .build()))
             .build();
 
     private boolean fetchAllFe = false;
@@ -723,6 +726,45 @@ public class SchemaTable extends Table {
         return false;
     }
 
+    public boolean shouldFetchAllFe() {
+        return ConnectContext.get().getSessionVariable().showAllFeConnection && fetchAllFe;
+    }
+
+    public boolean shouldAddAgg() {
+        if (!shouldFetchAllFe()) {
+            return false;
+        }
+        List<Column> columns = getColumns();
+        for (Column column : columns) {
+            if (column.isKey()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public enum SchemaTableAggregateType {
+        SUM,
+        AVG,
+        MAX,
+        MIN
+    }
+
+    public static class SchemaColumn extends Column {
+        private SchemaTableAggregateType schemaTableAggregateType;
+
+        public SchemaColumn(String name, ScalarType type, SchemaTableAggregateType schemaTableAggregateType,
+                boolean isKey) {
+            super(name, type, true);
+            this.schemaTableAggregateType = schemaTableAggregateType;
+            setIsKey(isKey);
+        }
+
+        public SchemaTableAggregateType getSchemaTableAggregateType() {
+            return schemaTableAggregateType;
+        }
+    }
+
     /**
      * For TABLE_MAP.
      **/
@@ -734,7 +776,13 @@ public class SchemaTable extends Table {
         }
 
         public Builder column(String name, ScalarType type) {
-            columns.add(new Column(name, type, true));
+            columns.add(new SchemaColumn(name, type, null, false));
+            return this;
+        }
+
+        public Builder column(String name, ScalarType type, SchemaTableAggregateType schemaTableAggregateType,
+                boolean isKey) {
+            columns.add(new SchemaColumn(name, type, schemaTableAggregateType, isKey));
             return this;
         }
 
