@@ -17,10 +17,16 @@
 
 package org.apache.doris.mtmv;
 
+import org.apache.doris.catalog.PartitionItem;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.datasource.mvcc.MvccUtil;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * get all related partition descs
@@ -30,7 +36,29 @@ public class MTMVRelatedPartitionDescInitGenerator implements MTMVRelatedPartiti
     @Override
     public void apply(MTMVPartitionInfo mvPartitionInfo, Map<String, String> mvProperties,
             RelatedPartitionDescResult lastResult) throws AnalysisException {
-        MTMVRelatedTableIf relatedTable = mvPartitionInfo.getRelatedTable();
-        lastResult.setItems(relatedTable.getAndCopyPartitionItems(MvccUtil.getSnapshotFromContext(relatedTable)));
+        List<MTMVRelatedTableIf> relatedTables = Lists.newArrayList();
+        Map<PartitionItem, PartitionIdents> res = Maps.newHashMap();
+        for (MTMVRelatedTableIf relatedTable : relatedTables) {
+            Map<PartitionItem, PartitionIdent> partitionItems = getRelatedTablePartitionItems(relatedTable);
+            for (Entry<PartitionItem, PartitionIdent> entry : partitionItems.entrySet()) {
+                PartitionIdents partitionIdents = res.computeIfAbsent(entry.getKey(), k -> new PartitionIdents());
+                partitionIdents.addPartitionIdent(entry.getValue());
+            }
+
+        }
+        // todo: 调用getIntersect检查res的key可以是否有交集
+        lastResult.setItems(res);
+    }
+
+    private Map<PartitionItem, PartitionIdent> getRelatedTablePartitionItems(MTMVRelatedTableIf relatedTable)
+            throws AnalysisException {
+        Map<String, PartitionItem> partitionItems = relatedTable.getAndCopyPartitionItems(
+                MvccUtil.getSnapshotFromContext(relatedTable));
+        BaseTableInfo baseTableInfo = new BaseTableInfo(relatedTable);
+        Map<PartitionItem, PartitionIdent> res = Maps.newHashMap();
+        for (Entry<String, PartitionItem> entry : partitionItems.entrySet()) {
+            res.put(entry.getValue(), new PartitionIdent(baseTableInfo, entry.getKey()));
+        }
+        return res;
     }
 }

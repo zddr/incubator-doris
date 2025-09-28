@@ -42,6 +42,7 @@ import org.apache.doris.mtmv.MTMVRefreshPartitionSnapshot;
 import org.apache.doris.mtmv.MTMVRefreshSnapshot;
 import org.apache.doris.mtmv.MTMVRelation;
 import org.apache.doris.mtmv.MTMVStatus;
+import org.apache.doris.mtmv.PartitionIdents;
 import org.apache.doris.qe.ConnectContext;
 
 import com.google.common.collect.Maps;
@@ -411,13 +412,13 @@ public class MTMV extends OlapTable {
      * @return mvPartitionName ==> relationPartitionNames
      * @throws AnalysisException
      */
-    public Map<String, Set<String>> calculatePartitionMappings() throws AnalysisException {
+    public Map<String, Set<PartitionIdents>> calculatePartitionMappings() throws AnalysisException {
         if (mvPartitionInfo.getPartitionType() == MTMVPartitionType.SELF_MANAGE) {
             return Maps.newHashMap();
         }
         long start = System.currentTimeMillis();
-        Map<String, Set<String>> res = Maps.newHashMap();
-        Map<PartitionKeyDesc, Set<String>> relatedPartitionDescs = MTMVPartitionUtil
+        Map<String, Set<PartitionIdents>> res = Maps.newHashMap();
+        Map<PartitionKeyDesc, Set<PartitionIdents>> relatedPartitionDescs = MTMVPartitionUtil
                 .generateRelatedPartitionDescs(mvPartitionInfo, mvProperties);
         Map<String, PartitionItem> mvPartitionItems = getAndCopyPartitionItems();
         for (Entry<String, PartitionItem> entry : mvPartitionItems.entrySet()) {
