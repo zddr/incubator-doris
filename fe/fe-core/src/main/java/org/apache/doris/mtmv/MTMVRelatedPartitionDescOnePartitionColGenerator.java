@@ -51,17 +51,22 @@ public class MTMVRelatedPartitionDescOnePartitionColGenerator implements MTMVRel
         if (mvPartitionInfo.getPartitionType() == MTMVPartitionType.SELF_MANAGE) {
             return;
         }
-        Map<PartitionKeyDesc, Set<String>> res = Maps.newHashMap();
-        Map<String, PartitionItem> relatedPartitionItems = lastResult.getItems();
-        int relatedColPos = mvPartitionInfo.getRelatedColPos();
-        for (Entry<String, PartitionItem> entry : relatedPartitionItems.entrySet()) {
-            PartitionKeyDesc partitionKeyDesc = entry.getValue().toPartitionKeyDesc(relatedColPos);
-            if (res.containsKey(partitionKeyDesc)) {
-                res.get(partitionKeyDesc).add(entry.getKey());
-            } else {
-                res.put(partitionKeyDesc, Sets.newHashSet(entry.getKey()));
+        Map<MTMVRelatedTableIf,Map<PartitionKeyDesc, Set<String>>> res2 = Maps.newHashMap();
+        Map<MTMVRelatedTableIf,Map<String, PartitionItem>> relatedPartitionItems = lastResult.getItems();
+        for (Entry<MTMVRelatedTableIf,Map<String, PartitionItem>> entry1:relatedPartitionItems.entrySet()) {
+            int relatedColPos = mvPartitionInfo.getRelatedColPos();
+            Map<PartitionKeyDesc, Set<String>> res = Maps.newHashMap();
+            for (Entry<String, PartitionItem> entry : entry1.getValue().entrySet()) {
+                PartitionKeyDesc partitionKeyDesc = entry.getValue().toPartitionKeyDesc(relatedColPos);
+                if (res.containsKey(partitionKeyDesc)) {
+                    res.get(partitionKeyDesc).add(entry.getKey());
+                } else {
+                    res.put(partitionKeyDesc, Sets.newHashSet(entry.getKey()));
+                }
             }
+            res2.put(entry1.getKey(),res);
         }
-        lastResult.setDescs(res);
+
+        lastResult.setDescs(res2);
     }
 }

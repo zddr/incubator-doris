@@ -26,6 +26,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.gson.annotations.SerializedName;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -101,6 +102,15 @@ public class ListPartitionItem extends PartitionItem {
             res.add(Lists.newArrayList(values.get(pos)));
         }
         return PartitionKeyDesc.createIn(Lists.newArrayList(res));
+    }
+
+    public ListPartitionItem toPartitionItem(int pos) throws AnalysisException {
+        List<PartitionKey> res = new ArrayList<>();
+        for (PartitionKey partitionKey:partitionKeys) {
+            partitionKey.toOneColKey(pos);
+            res.add(partitionKey);
+        }
+        return new ListPartitionItem(res);
     }
 
     @Override

@@ -78,6 +78,13 @@ public class PartitionKey implements Comparable<PartitionKey>, Writable {
         types = Lists.newArrayList();
     }
 
+    public PartitionKey toOneColKey(int col) {
+        PartitionKey partitionKey = new PartitionKey();
+        partitionKey.keys.add(this.keys.get(col));
+        partitionKey.originHiveKeys.add(this.originHiveKeys.get(col));
+        partitionKey.types.add(this.types.get(col));
+    }
+
     public void setDefaultListPartition(boolean isDefaultListPartitionKey) {
         this.isDefaultListPartitionKey = isDefaultListPartitionKey;
     }

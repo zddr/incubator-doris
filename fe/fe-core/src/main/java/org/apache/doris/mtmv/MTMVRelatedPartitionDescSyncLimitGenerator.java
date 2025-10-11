@@ -44,20 +44,25 @@ public class MTMVRelatedPartitionDescSyncLimitGenerator implements MTMVRelatedPa
     @Override
     public void apply(MTMVPartitionInfo mvPartitionInfo, Map<String, String> mvProperties,
             RelatedPartitionDescResult lastResult) throws AnalysisException {
-        Map<String, PartitionItem> partitionItems = lastResult.getItems();
+        Map<MTMVRelatedTableIf, Map<String, PartitionItem>> partitionItems = lastResult.getItems();
         MTMVPartitionSyncConfig config = generateMTMVPartitionSyncConfigByProperties(mvProperties);
         if (config.getSyncLimit() <= 0) {
             return;
         }
         long nowTruncSubSec = getNowTruncSubSec(config.getTimeUnit(), config.getSyncLimit());
         Optional<String> dateFormat = config.getDateFormat();
-        Map<String, PartitionItem> res = Maps.newHashMap();
-        int relatedColPos = mvPartitionInfo.getRelatedColPos();
-        for (Entry<String, PartitionItem> entry : partitionItems.entrySet()) {
-            if (entry.getValue().isGreaterThanSpecifiedTime(relatedColPos, dateFormat, nowTruncSubSec)) {
-                res.put(entry.getKey(), entry.getValue());
+        Map<MTMVRelatedTableIf, Map<String, PartitionItem>> res = Maps.newHashMap();
+        for (Entry<MTMVRelatedTableIf, Map<String, PartitionItem>> entry : partitionItems.entrySet()) {
+            Map<String, PartitionItem> res2 = Maps.newHashMap();
+            int relatedColPos = mvPartitionInfo.getRelatedColPos();
+            for (Entry<String, PartitionItem> entry2 : entry.getValue().entrySet()) {
+                if (entry2.getValue().isGreaterThanSpecifiedTime(relatedColPos, dateFormat, nowTruncSubSec)) {
+                    res2.put(entry2.getKey(), entry2.getValue());
+                }
             }
+            res.put(entry.getKey(), res2);
         }
+
         lastResult.setItems(res);
     }
 

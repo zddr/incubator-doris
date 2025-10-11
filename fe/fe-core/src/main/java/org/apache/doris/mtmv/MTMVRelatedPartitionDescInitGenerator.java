@@ -17,9 +17,13 @@
 
 package org.apache.doris.mtmv;
 
+import org.apache.doris.catalog.PartitionItem;
 import org.apache.doris.common.AnalysisException;
 import org.apache.doris.datasource.mvcc.MvccUtil;
 
+import com.google.common.collect.Maps;
+
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,7 +34,12 @@ public class MTMVRelatedPartitionDescInitGenerator implements MTMVRelatedPartiti
     @Override
     public void apply(MTMVPartitionInfo mvPartitionInfo, Map<String, String> mvProperties,
             RelatedPartitionDescResult lastResult) throws AnalysisException {
-        MTMVRelatedTableIf relatedTable = mvPartitionInfo.getRelatedTable();
-        lastResult.setItems(relatedTable.getAndCopyPartitionItems(MvccUtil.getSnapshotFromContext(relatedTable)));
+        List<MTMVRelatedTableIf> relatedTables = mvPartitionInfo.getRelatedTables();
+        Map<MTMVRelatedTableIf, Map<String, PartitionItem>> items = Maps.newHashMap();
+        for (MTMVRelatedTableIf relatedTable : relatedTables) {
+            items.put(relatedTable,
+                    relatedTable.getAndCopyPartitionItems(MvccUtil.getSnapshotFromContext(relatedTable)));
+        }
+        lastResult.setItems(items);
     }
 }

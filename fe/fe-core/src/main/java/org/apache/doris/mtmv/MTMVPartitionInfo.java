@@ -40,14 +40,18 @@ public class MTMVPartitionInfo {
 
     @SerializedName("pt")
     private MTMVPartitionType partitionType;
+    @Deprecated
     @SerializedName("rt")
     private BaseTableInfo relatedTable;
+    @Deprecated
     @SerializedName("rc")
     private String relatedCol;
     @SerializedName("pc")
     private String partitionCol;
     @SerializedName("expr")
     private Expr expr;
+    @SerializedName("ris")
+    private List<MTMVPartitionRelatedInfo> relatedInfos;
 
     public MTMVPartitionInfo() {
     }

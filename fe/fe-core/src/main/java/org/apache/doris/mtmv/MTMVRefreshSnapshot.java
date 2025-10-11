@@ -37,24 +37,24 @@ public class MTMVRefreshSnapshot {
     }
 
     public boolean equalsWithRelatedPartition(String mtmvPartitionName, String relatedPartitionName,
-            MTMVSnapshotIf relatedPartitionCurrentSnapshot) {
+            MTMVSnapshotIf relatedPartitionCurrentSnapshot, BaseTableInfo relatedTableInfo) {
         MTMVRefreshPartitionSnapshot partitionSnapshot = partitionSnapshots.get(mtmvPartitionName);
         if (partitionSnapshot == null) {
             return false;
         }
-        MTMVSnapshotIf relatedPartitionSnapshot = partitionSnapshot.getPartitions().get(relatedPartitionName);
+        MTMVSnapshotIf relatedPartitionSnapshot = partitionSnapshot.getPartitionsByRelatedTable(relatedTableInfo).get(relatedPartitionName);
         if (relatedPartitionSnapshot == null) {
             return false;
         }
         return relatedPartitionSnapshot.equals(relatedPartitionCurrentSnapshot);
     }
 
-    public Set<String> getSnapshotPartitions(String mtmvPartitionName) {
+    public Set<String> getSnapshotPartitions(String mtmvPartitionName,BaseTableInfo relatedTableInfo) {
         MTMVRefreshPartitionSnapshot partitionSnapshot = partitionSnapshots.get(mtmvPartitionName);
         if (partitionSnapshot == null) {
             return Sets.newHashSet();
         }
-        return partitionSnapshot.getPartitions().keySet();
+        return partitionSnapshot.getPartitionsByRelatedTable(relatedTableInfo).keySet();
     }
 
     public boolean equalsWithBaseTable(String mtmvPartitionName, BaseTableInfo tableInfo,

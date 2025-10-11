@@ -43,6 +43,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -90,20 +91,26 @@ public class MTMVPartitionUtil {
             Set<BaseTableInfo> tables,
             Set<TableName> excludedTriggerTables) throws AnalysisException {
         MTMV mtmv = refreshContext.getMtmv();
-        Set<String> relatedPartitionNames = refreshContext.getPartitionMappings().get(partitionName);
-        boolean isSyncWithPartition = true;
+        Map<MTMVRelatedTableIf, Set<String>> partitionMappings = refreshContext.getPartitionMappings()
+                .get(partitionName);
         if (mtmv.getMvPartitionInfo().getPartitionType() != MTMVPartitionType.SELF_MANAGE) {
-            MTMVRelatedTableIf relatedTable = mtmv.getMvPartitionInfo().getRelatedTable();
-            // if follow base table, not need compare with related table, only should compare with related partition
-            excludedTriggerTables.add(new TableName(relatedTable));
-            if (CollectionUtils.isEmpty(relatedPartitionNames)) {
-                LOG.warn("can not found related partition, partitionId: {}, mtmvName: {}, relatedTableName: {}",
-                        partitionName, mtmv.getName(), relatedTable.getName());
-                return false;
+            List<MTMVRelatedTableIf> relatedTables = mtmv.getMvPartitionInfo().getRelatedTables();
+            for (MTMVRelatedTableIf relatedTable : relatedTables) {
+                Set<String> relatedPartitionNames = partitionMappings.get(relatedTable);
+                // if follow base table, not need compare with related table, only should compare with related partition
+                excludedTriggerTables.add(new TableName(relatedTable));
+                if (CollectionUtils.isEmpty(relatedPartitionNames)) {
+                    LOG.warn("can not found related partition, partitionId: {}, mtmvName: {}, relatedTableName: {}",
+                            partitionName, mtmv.getName(), relatedTable.getName());
+                    return false;
+                }
+                if (!isSyncWithPartitions(refreshContext, partitionName, relatedPartitionNames, relatedTable)) {
+                    return false;
+                }
             }
-            isSyncWithPartition = isSyncWithPartitions(refreshContext, partitionName, relatedPartitionNames);
+
         }
-        return isSyncWithPartition && isSyncWithAllBaseTables(refreshContext, partitionName, tables,
+        return isSyncWithAllBaseTables(refreshContext, partitionName, tables,
                 excludedTriggerTables);
 
     }
@@ -163,7 +170,8 @@ public class MTMVPartitionUtil {
         return res;
     }
 
-    public static Map<PartitionKeyDesc, Set<String>> generateRelatedPartitionDescs(MTMVPartitionInfo mvPartitionInfo,
+    public static Map<PartitionKeyDesc, Map<MTMVRelatedTableIf, Set<String>>> generateRelatedPartitionDescs(
+            MTMVPartitionInfo mvPartitionInfo,
             Map<String, String> mvProperties) throws AnalysisException {
         long start = System.currentTimeMillis();
         RelatedPartitionDescResult result = new RelatedPartitionDescResult();
@@ -174,7 +182,7 @@ public class MTMVPartitionUtil {
             LOG.debug("generateRelatedPartitionDescs use [{}] mills, mvPartitionInfo is [{}]",
                     System.currentTimeMillis() - start, mvPartitionInfo);
         }
-        return result.getDescs();
+        return result.getRes();
     }
 
     public static List<Long> getPartitionsIdsByNames(MTMV mtmv, List<String> partitions) throws AnalysisException {
@@ -318,14 +326,15 @@ public class MTMVPartitionUtil {
      * @throws AnalysisException
      */
     public static boolean isSyncWithPartitions(MTMVRefreshContext context, String mtmvPartitionName,
-            Set<String> relatedPartitionNames) throws AnalysisException {
+            Set<String> relatedPartitionNames, MTMVRelatedTableIf relatedTable) throws AnalysisException {
         MTMV mtmv = context.getMtmv();
-        MTMVRelatedTableIf relatedTable = mtmv.getMvPartitionInfo().getRelatedTable();
         if (!relatedTable.needAutoRefresh()) {
             return true;
         }
+        BaseTableInfo relatedTableInfo = new BaseTableInfo(relatedTable);
         // check if partitions of related table is changed
-        Set<String> snapshotPartitions = mtmv.getRefreshSnapshot().getSnapshotPartitions(mtmvPartitionName);
+        Set<String> snapshotPartitions = mtmv.getRefreshSnapshot()
+                .getSnapshotPartitions(mtmvPartitionName, relatedTableInfo);
         if (!Objects.equals(relatedPartitionNames, snapshotPartitions)) {
             return false;
         }
@@ -340,7 +349,7 @@ public class MTMVPartitionUtil {
             }
             if (!mtmv.getRefreshSnapshot()
                     .equalsWithRelatedPartition(mtmvPartitionName, relatedPartitionName,
-                            relatedPartitionCurrentSnapshot)) {
+                            relatedPartitionCurrentSnapshot, relatedTableInfo)) {
                 return false;
             }
         }
@@ -543,17 +552,21 @@ public class MTMVPartitionUtil {
 
 
     private static MTMVRefreshPartitionSnapshot generatePartitionSnapshot(MTMVRefreshContext context,
-            Set<BaseTableInfo> baseTables, Set<String> relatedPartitionNames)
+            Set<BaseTableInfo> baseTables, Map<MTMVRelatedTableIf, Set<String>> relatedPartitionNames)
             throws AnalysisException {
         MTMV mtmv = context.getMtmv();
         MTMVRefreshPartitionSnapshot refreshPartitionSnapshot = new MTMVRefreshPartitionSnapshot();
         if (mtmv.getMvPartitionInfo().getPartitionType() != MTMVPartitionType.SELF_MANAGE) {
-            MTMVRelatedTableIf relatedTable = mtmv.getMvPartitionInfo().getRelatedTable();
-            for (String relatedPartitionName : relatedPartitionNames) {
-                MTMVSnapshotIf partitionSnapshot = relatedTable.getPartitionSnapshot(relatedPartitionName, context,
-                        MvccUtil.getSnapshotFromContext(relatedTable));
-                refreshPartitionSnapshot.getPartitions().put(relatedPartitionName, partitionSnapshot);
+            List<MTMVRelatedTableIf> relatedTables = mtmv.getMvPartitionInfo().getRelatedTables();
+            for (MTMVRelatedTableIf relatedTable : relatedTables) {
+                for (String relatedPartitionName : relatedPartitionNames.get(relatedTable)) {
+                    MTMVSnapshotIf partitionSnapshot = relatedTable.getPartitionSnapshot(relatedPartitionName, context,
+                            MvccUtil.getSnapshotFromContext(relatedTable));
+                    refreshPartitionSnapshot.getPartitionsByRelatedTable(new BaseTableInfo(relatedTable))
+                            .put(relatedPartitionName, partitionSnapshot);
+                }
             }
+
         }
         for (BaseTableInfo baseTableInfo : baseTables) {
             if (mtmv.getMvPartitionInfo().getPartitionType() != MTMVPartitionType.SELF_MANAGE && mtmv

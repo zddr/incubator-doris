@@ -50,7 +50,7 @@ public class MTMVRelatedPartitionDescRollUpGenerator implements MTMVRelatedParti
         if (partitionType == PartitionType.RANGE) {
             lastResult.setDescs(rollUpRange(lastResult.getDescs(), mvPartitionInfo));
         } else if (partitionType == PartitionType.LIST) {
-            lastResult.setDescs(rollUpList(lastResult.getDescs(), mvPartitionInfo, mvProperties));
+            // lastResult.setDescs(rollUpList(lastResult.getDescs(), mvPartitionInfo, mvProperties));
         } else {
             throw new AnalysisException("only RANGE/LIST partition support roll up");
         }
@@ -112,6 +112,15 @@ public class MTMVRelatedPartitionDescRollUpGenerator implements MTMVRelatedParti
         return res;
     }
 
+
+    public Map<MTMVRelatedTableIf,Map<PartitionKeyDesc, Set<String>>> rollUpRange(Map<MTMVRelatedTableIf,Map<PartitionKeyDesc, Set<String>>> relatedPartitionDescs,
+            MTMVPartitionInfo mvPartitionInfo) throws AnalysisException {
+        Map<MTMVRelatedTableIf,Map<PartitionKeyDesc, Set<String>>> result = Maps.newHashMap();
+        for (Entry<MTMVRelatedTableIf,Map<PartitionKeyDesc, Set<String>>> entry:relatedPartitionDescs.entrySet()) {
+            result.put(entry.getKey(),rollUpRangeForOneRelatedTable(entry.getValue(),mvPartitionInfo));
+        }
+        return result;
+    }
     /**
      * when related table has 3 partitions:(20200101-20200102),(20200102-20200103),(20200201-20200202)
      * <p>
@@ -126,7 +135,7 @@ public class MTMVRelatedPartitionDescRollUpGenerator implements MTMVRelatedParti
      * @return
      * @throws AnalysisException
      */
-    public Map<PartitionKeyDesc, Set<String>> rollUpRange(Map<PartitionKeyDesc, Set<String>> relatedPartitionDescs,
+    public Map<PartitionKeyDesc, Set<String>> rollUpRangeForOneRelatedTable(Map<PartitionKeyDesc, Set<String>> relatedPartitionDescs,
             MTMVPartitionInfo mvPartitionInfo) throws AnalysisException {
         Map<PartitionKeyDesc, Set<String>> result = Maps.newHashMap();
         MTMVPartitionExprService exprSerice = MTMVPartitionExprFactory.getExprService(mvPartitionInfo.getExpr());

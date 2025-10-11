@@ -45,6 +45,8 @@ public class MTMVRefreshPartitionSnapshot {
     private Map<Long, MTMVSnapshotIf> tables;
     @SerializedName("ti")
     private Map<BaseTableInfo, MTMVSnapshotIf> tablesInfo;
+    @SerializedName("rtp")
+    private Map<BaseTableInfo, Map<String, MTMVSnapshotIf>> relatedTablePartitions;
 
     public MTMVRefreshPartitionSnapshot() {
         this.partitions = Maps.newConcurrentMap();
@@ -54,6 +56,10 @@ public class MTMVRefreshPartitionSnapshot {
 
     public Map<String, MTMVSnapshotIf> getPartitions() {
         return partitions;
+    }
+
+    public Map<String, MTMVSnapshotIf> getPartitionsByRelatedTable(BaseTableInfo relatedTableInfo) {
+        return relatedTablePartitions.get(relatedTableInfo);
     }
 
     public MTMVSnapshotIf getTableSnapshot(BaseTableInfo table) {
