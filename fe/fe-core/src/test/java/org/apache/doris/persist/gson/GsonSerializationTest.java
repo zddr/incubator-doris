@@ -42,10 +42,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /*
  * This unit test provides examples about how to make a class serializable.
@@ -428,5 +430,88 @@ public class GsonSerializationTest {
         MultiMapClassA readClassA = MultiMapClassA.read(in);
         Assert.assertEquals(Sets.newHashSet(new Key(MyEnum.TYPE_A, "key1"), new Key(MyEnum.TYPE_B, "key2")),
                 readClassA.map.keySet());
+    }
+
+    public static class ConcurrentHashMapClassA implements Writable {
+        @SerializedName(value = "map")
+        public Map<Key, Long> map = new HashMap<Key,Long>();
+
+        public ConcurrentHashMapClassA() {
+            map.put(new Key(MyEnum.TYPE_A, "key1"), 1L);
+            map.put(new Key(MyEnum.TYPE_B, "key2"), 2L);
+        }
+
+        @Override
+        public void write(DataOutput out) throws IOException {
+            String json = GsonUtils.GSON.toJson(this);
+            Text.writeString(out, json);
+        }
+
+        public static ConcurrentHashMapClassA read(DataInput in) throws IOException {
+            String json = Text.readString(in);
+            ConcurrentHashMapClassA classA = GsonUtils.GSON.fromJson(json, ConcurrentHashMapClassA.class);
+            return classA;
+        }
+    }
+
+    public static class ConcurrentHashMapClassB implements Writable {
+        @SerializedName(value = "map")
+        public ConcurrentHashMap<ConcurrentHashMap<String, Long>, Long> map = new ConcurrentHashMap<>();
+
+        public ConcurrentHashMapClassB() {
+            ConcurrentHashMap<String, Long> map1 = new ConcurrentHashMap<>();
+            map1.put("ss", 2L);
+            map.put(map1, 1L);
+        }
+
+        @Override
+        public void write(DataOutput out) throws IOException {
+            String json = GsonUtils.GSON.toJson(this);
+            Text.writeString(out, json);
+        }
+
+        public static ConcurrentHashMapClassB read(DataInput in) throws IOException {
+            String json = Text.readString(in);
+            ConcurrentHashMapClassB classB = GsonUtils.GSON.fromJson(json, ConcurrentHashMapClassB.class);
+            return classB;
+        }
+    }
+
+    @Test
+    public void testConcurrentHashMapA() throws IOException {
+        // 1. Write objects to file
+        File file = new File(fileName);
+        file.createNewFile();
+        DataOutputStream out = new DataOutputStream(new FileOutputStream(file));
+
+        ConcurrentHashMapClassA classA = new ConcurrentHashMapClassA();
+        classA.write(out);
+        out.flush();
+        out.close();
+
+        // 2. Read objects from file
+        DataInputStream in = new DataInputStream(new FileInputStream(file));
+
+        ConcurrentHashMapClassA readClassA = ConcurrentHashMapClassA.read(in);
+        System.out.println(readClassA.map);
+    }
+
+    @Test
+    public void testConcurrentHashMapB() throws IOException {
+        // 1. Write objects to file
+        File file = new File(fileName);
+        file.createNewFile();
+        DataOutputStream out = new DataOutputStream(new FileOutputStream(file));
+
+        ConcurrentHashMapClassB classB = new ConcurrentHashMapClassB();
+        classB.write(out);
+        out.flush();
+        out.close();
+
+        // 2. Read objects from file
+        DataInputStream in = new DataInputStream(new FileInputStream(file));
+
+        ConcurrentHashMapClassB readClassB = ConcurrentHashMapClassB.read(in);
+        System.out.println(readClassB);
     }
 }

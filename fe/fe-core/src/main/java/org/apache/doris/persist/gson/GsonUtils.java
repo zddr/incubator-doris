@@ -223,6 +223,7 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
@@ -238,6 +239,7 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import com.google.gson.ReflectionAccessFilter;
@@ -262,8 +264,14 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
@@ -611,6 +619,7 @@ public class GsonUtils {
                     new HiddenAnnotationExclusionStrategy()).serializeSpecialFloatingPointValues()
             .enableComplexMapKeySerialization()
             .addReflectionAccessFilter(ReflectionAccessFilter.BLOCK_INACCESSIBLE_JAVA)
+            .registerTypeHierarchyAdapter(Table.class, new MapTypeAdapter())
             .registerTypeHierarchyAdapter(Table.class, new GuavaTableAdapter())
             .registerTypeHierarchyAdapter(Multimap.class, new GuavaMultimapAdapter())
             .registerTypeAdapterFactory(new PostProcessTypeAdapterFactory())
@@ -789,6 +798,105 @@ public class GsonUtils {
                 table.put(rowKey, columnKey, value);
             }
             return table;
+        }
+    }
+
+    // ===== 新增：Map 类型白名单（安全反序列化）=====
+    private static final Set<String> ALLOWED_MAP_CLASSES = ImmutableSet.of(
+            ConcurrentHashMap.class.getName(),
+            TreeMap.class.getName(),
+            HashMap.class.getName(),
+            LinkedHashMap.class.getName(),
+            Hashtable.class.getName(),
+            WeakHashMap.class.getName()
+    );
+
+    // ===== 新增：Map 自定义序列化/反序列化适配器 =====
+    public static class MapTypeAdapter implements JsonSerializer<Map<?, ?>>, JsonDeserializer<Map<?, ?>> {
+        private static final String CLASS_FIELD = "__map_class";
+
+        @Override
+        public JsonElement serialize(Map<?, ?> src, Type typeOfSrc, JsonSerializationContext context) {
+            JsonObject jsonObject = new JsonObject();
+
+            // 判断是否需要记录类型：如果不是 LinkedHashMap（Gson 默认），则记录
+            Class<?> mapClass = src.getClass();
+            if (!LinkedHashMap.class.equals(mapClass)) {
+                jsonObject.addProperty(CLASS_FIELD, mapClass.getName());
+            }
+
+            // 序列化 entries
+            for (Map.Entry<?, ?> entry : src.entrySet()) {
+                JsonElement keyElement = context.serialize(entry.getKey());
+                JsonElement valueElement = context.serialize(entry.getValue());
+                // 使用 key 的 JSON 字符串作为字段名（Gson 默认行为）
+                String keyStr = keyElement.isJsonPrimitive() && keyElement.getAsJsonPrimitive().isString()
+                        ? keyElement.getAsString()
+                        : keyElement.toString();
+                jsonObject.add(keyStr, valueElement);
+            }
+
+            return jsonObject;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public Map<?, ?> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+                throws JsonParseException {
+            if (!json.isJsonObject()) {
+                throw new JsonParseException("Expected JsonObject for Map deserialization");
+            }
+
+            JsonObject jsonObject = json.getAsJsonObject();
+            String className = null;
+
+            // 检查是否有 __map_class 字段
+            if (jsonObject.has(CLASS_FIELD)) {
+                JsonElement classElement = jsonObject.get(CLASS_FIELD);
+                if (classElement.isJsonPrimitive()) {
+                    className = classElement.getAsString();
+                    // 安全校验
+                    if (!ALLOWED_MAP_CLASSES.contains(className)) {
+                        throw new JsonParseException("Disallowed Map implementation: " + className);
+                    }
+                    jsonObject.remove(CLASS_FIELD); // 移除元字段，避免干扰数据
+                }
+            }
+
+            // 获取泛型参数：Map<K, V>
+            Type keyType = Object.class;
+            Type valueType = Object.class;
+            if (typeOfT instanceof ParameterizedType) {
+                ParameterizedType pType = (ParameterizedType) typeOfT;
+                Type[] actualTypes = pType.getActualTypeArguments();
+                if (actualTypes.length >= 2) {
+                    keyType = actualTypes[0];
+                    valueType = actualTypes[1];
+                }
+            }
+
+            // 创建 Map 实例
+            Map<Object, Object> map;
+            if (className != null) {
+                try {
+                    Class<?> clazz = Class.forName(className);
+                    map = (Map<Object, Object>) clazz.getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new JsonParseException("Failed to instantiate Map class: " + className, e);
+                }
+            } else {
+                // 默认使用 LinkedHashMap（与 Gson 原生行为一致）
+                map = new LinkedHashMap<>();
+            }
+
+            // 反序列化 entries
+            for (Map.Entry<String, JsonElement> entry : jsonObject.entrySet()) {
+                Object key = context.deserialize(new JsonPrimitive(entry.getKey()), keyType);
+                Object value = context.deserialize(entry.getValue(), valueType);
+                map.put(key, value);
+            }
+
+            return map;
         }
     }
 
