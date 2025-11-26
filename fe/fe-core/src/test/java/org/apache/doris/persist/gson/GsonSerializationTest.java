@@ -42,7 +42,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -209,7 +208,7 @@ public class GsonSerializationTest {
         @SerializedName(value = "classA1")
         public InnerClassA classA1ChangeName;
         public InnerClassA ignoreClassA2ChangeName;
-        @SerializedName(value = "flagChangeName", alternate = { "flag" })
+        @SerializedName(value = "flagChangeName", alternate = {"flag"})
         public int flagChangeName = 0;
 
         public OriginClassADifferentMemberName(int flag) {
@@ -434,7 +433,7 @@ public class GsonSerializationTest {
 
     public static class ConcurrentHashMapClassA implements Writable {
         @SerializedName(value = "map")
-        public Map<Key, Long> map = new HashMap<Key,Long>();
+        public Map<Key, Long> map = new ConcurrentHashMap<>();
 
         public ConcurrentHashMapClassA() {
             map.put(new Key(MyEnum.TYPE_A, "key1"), 1L);
@@ -456,10 +455,10 @@ public class GsonSerializationTest {
 
     public static class ConcurrentHashMapClassB implements Writable {
         @SerializedName(value = "map")
-        public ConcurrentHashMap<ConcurrentHashMap<String, Long>, Long> map = new ConcurrentHashMap<>();
+        public Map<Map<String, Long>, Long> map = new ConcurrentHashMap<>();
 
         public ConcurrentHashMapClassB() {
-            ConcurrentHashMap<String, Long> map1 = new ConcurrentHashMap<>();
+            Map<String, Long> map1 = new ConcurrentHashMap<>();
             map1.put("ss", 2L);
             map.put(map1, 1L);
         }

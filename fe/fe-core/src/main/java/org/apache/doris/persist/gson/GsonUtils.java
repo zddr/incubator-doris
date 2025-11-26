@@ -239,7 +239,7 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonParser;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import com.google.gson.ReflectionAccessFilter;
@@ -619,7 +619,7 @@ public class GsonUtils {
                     new HiddenAnnotationExclusionStrategy()).serializeSpecialFloatingPointValues()
             .enableComplexMapKeySerialization()
             .addReflectionAccessFilter(ReflectionAccessFilter.BLOCK_INACCESSIBLE_JAVA)
-            .registerTypeHierarchyAdapter(Table.class, new MapTypeAdapter())
+            //.registerTypeHierarchyAdapter(Map.class, new MapTypeAdapter())
             .registerTypeHierarchyAdapter(Table.class, new GuavaTableAdapter())
             .registerTypeHierarchyAdapter(Multimap.class, new GuavaMultimapAdapter())
             .registerTypeAdapterFactory(new PostProcessTypeAdapterFactory())
@@ -891,9 +891,16 @@ public class GsonUtils {
 
             // 反序列化 entries
             for (Map.Entry<String, JsonElement> entry : jsonObject.entrySet()) {
-                Object key = context.deserialize(new JsonPrimitive(entry.getKey()), keyType);
-                Object value = context.deserialize(entry.getValue(), valueType);
-                map.put(key, value);
+                try {
+                    // 关键修复：将 entry.getKey() 视为一个 JSON 字符串表示，并解析为 JsonElement
+                    String keyJsonString = entry.getKey();
+                    JsonElement keyJsonElement = JsonParser.parseString(keyJsonString);
+                    Object key = context.deserialize(keyJsonElement, keyType);
+                    Object value = context.deserialize(entry.getValue(), valueType);
+                    map.put(key, value);
+                } catch (Exception e) {
+                    throw new JsonParseException("Failed to deserialize map key: " + entry.getKey(), e);
+                }
             }
 
             return map;
